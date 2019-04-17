@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Web3j Sample</string>
+    <string name="import_wallet">Import Wallet</string>
+    <string name="generate_wallet">Generate Wallet</string>
+    <string name="make_transaction">Make transaction</string>
+    <string name="amount_of_eth">Amount of ETH</string>
+    <string name="from_address">From address</string>
+    <string name="to_address">To address</string>
+    <string name="delete_all_wallets">Delete all wallets</string>
+    <string name="be_patient">The transaction will take some time to complete, be patient…</string>
+</resources>
