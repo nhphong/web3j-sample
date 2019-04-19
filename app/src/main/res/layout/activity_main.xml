@@ -11,13 +11,22 @@
         android:layout_height="wrap_content">
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerView"
+            android:id="@+id/walletsRecyclerView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/normal_margin"
-            android:layout_marginEnd="@dimen/normal_margin"
             android:layout_marginTop="@dimen/normal_margin"
+            android:layout_marginEnd="@dimen/normal_margin"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/contractsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/normal_margin"
+            android:layout_marginTop="@dimen/normal_margin"
+            android:layout_marginEnd="@dimen/normal_margin"
+            app:layout_constraintTop_toBottomOf="@id/walletsRecyclerView" />
 
         <Button
             android:id="@+id/generateWalletButton"
@@ -27,17 +36,17 @@
             android:layout_marginTop="@dimen/normal_margin"
             android:text="@string/generate_wallet"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/recyclerView" />
+            app:layout_constraintTop_toBottomOf="@id/contractsRecyclerView" />
 
         <Button
             android:id="@+id/importWalletButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/normal_margin"
             android:layout_marginTop="@dimen/normal_margin"
+            android:layout_marginEnd="@dimen/normal_margin"
             android:text="@string/import_wallet"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/generateWalletButton" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/contractsRecyclerView" />
 
         <Button
             android:id="@+id/sendEthButton"
@@ -50,14 +59,34 @@
             app:layout_constraintTop_toBottomOf="@id/importWalletButton" />
 
         <Button
-            android:id="@+id/deleteAllWalletsButton"
+            android:id="@+id/deployContractButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/normal_margin"
+            android:layout_marginEnd="@dimen/normal_margin"
+            android:text="@string/deploy_contract"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/importWalletButton" />
+
+        <Button
+            android:id="@+id/clearWalletsButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/normal_margin"
             android:layout_marginTop="@dimen/normal_margin"
-            android:text="@string/delete_all_wallets"
+            android:text="@string/clear_wallets"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/sendEthButton" />
+            app:layout_constraintTop_toBottomOf="@id/deployContractButton" />
+
+        <Button
+            android:id="@+id/clearContractsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/normal_margin"
+            android:layout_marginEnd="@dimen/normal_margin"
+            android:text="@string/clear_contracts"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/deployContractButton" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

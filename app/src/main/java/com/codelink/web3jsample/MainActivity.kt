@@ -1,43 +1,43 @@
 package com.codelink.web3jsample
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView.VERTICAL
+import com.codelink.web3jsample.adapter.ContractAdapter
+import com.codelink.web3jsample.adapter.WalletAdapter
+import com.codelink.web3jsample.blockchain.Greeter
+import com.codelink.web3jsample.data.Contract
+import com.codelink.web3jsample.data.Wallet
+import com.codelink.web3jsample.db.Caching
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.dialog_make_transaction.view.*
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.web3j.crypto.ECKeyPair
 import org.web3j.crypto.WalletUtils
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.http.HttpService
 import org.web3j.tx.Transfer
+import org.web3j.tx.gas.DefaultGasProvider
 import org.web3j.utils.Convert
 import java.io.File
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.security.Security
 
 
 class MainActivity : AppCompatActivity() {
 
   private lateinit var walletFile: File
   private lateinit var web3j: Web3j
-  private lateinit var adapter: WalletAdapter
+  private lateinit var walletAdapter: WalletAdapter
+  private lateinit var contractAdapter: ContractAdapter
 
-  private val disposables = CompositeDisposable()
   private var wallets = listOf<Wallet>()
-  private var toast: Toast? = null
+  private val caching = Caching(this)
+  private val disposables = CompositeDisposable()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -54,34 +54,72 @@ class MainActivity : AppCompatActivity() {
       )
     )
 
-    adapter = WalletAdapter()
-    with(recyclerView) {
-      adapter = this@MainActivity.adapter
+    walletAdapter = WalletAdapter()
+    with(walletsRecyclerView) {
+      adapter = this@MainActivity.walletAdapter
       layoutManager = LinearLayoutManager(this@MainActivity, VERTICAL, false)
     }
 
-    generateWalletButton.setOnClickListener {
-      generateWallet()
+    contractAdapter = ContractAdapter()
+    with(contractsRecyclerView) {
+      adapter = this@MainActivity.contractAdapter
+      layoutManager = LinearLayoutManager(this@MainActivity, VERTICAL, false)
     }
 
-    importWalletButton.setOnClickListener {
-      showDialogToImportWallet()
+    generateWalletButton.setOnClickListener { generateWallet() }
+    importWalletButton.setOnClickListener { showDialogToImportWallet(this, ::importWallet) }
+    clearWalletsButton.setOnClickListener { clearWallets() }
+    clearContractsButton.setOnClickListener { clearContracts() }
+    deployContractButton.setOnClickListener {
+      showDialogToDeployContract(
+        this,
+        wallets,
+        ::deployContract
+      )
     }
-
     sendEthButton.setOnClickListener {
-      showDialogToMakeTransaction()
+      showDialogToMakeTransaction(
+        this,
+        wallets,
+        ::makeTransaction
+      )
     }
-
-    deleteAllWalletsButton.setOnClickListener {
-      deleteAllWallets()
-    }
-
     loadWallets()
+    loadContracts()
   }
 
   override fun onDestroy() {
     disposables.clear()
     super.onDestroy()
+  }
+
+  private fun deployContract(walletAddress: String) {
+    showMessage(this, getString(R.string.deploying_contracts))
+    execute({
+      val credentials = WalletUtils.loadCredentials(
+        DEFAULT_PASSWORD,
+        walletFile.listFiles { _, name ->
+          name.contains(walletAddress.substring(2).toLowerCase())
+        }.first()
+      )
+
+      val contract = Greeter.deploy(
+        web3j,
+        credentials,
+        DefaultGasProvider(),
+        "Have a nice day"
+      ).send()
+
+      caching.saveContract(
+        Contract(
+          contract.contractAddress,
+          contract.balance.send().toString(),
+          contract.owner.send()
+        )
+      )
+    }) {
+      loadContracts()
+    }
   }
 
   private fun loadWallets() {
@@ -99,9 +137,13 @@ class MainActivity : AppCompatActivity() {
         )
       }
     }) {
-      adapter.wallets = it
+      walletAdapter.wallets = it
       wallets = it
     }
+  }
+
+  private fun loadContracts() {
+    contractAdapter.contracts = caching.loadContracts()
   }
 
   private fun generateWallet() {
@@ -112,13 +154,21 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
-  private fun deleteAllWallets() {
+  private fun clearWallets() {
     execute({
       walletFile.deleteRecursively()
       walletFile.mkdirs()
       wallets = emptyList()
     }) {
       loadWallets()
+    }
+  }
+
+  private fun clearContracts() {
+    execute({
+      caching.clearContracts()
+    }) {
+      loadContracts()
     }
   }
 
@@ -136,7 +186,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun makeTransaction(amount: String, from: String, to: String) {
-    showMessage(getString(R.string.be_patient))
+    showMessage(this, getString(R.string.making_transaction))
     execute({
       val credentials = WalletUtils.loadCredentials(
         DEFAULT_PASSWORD,
@@ -165,58 +215,6 @@ class MainActivity : AppCompatActivity() {
     return tokenValue.toString()
   }
 
-  private fun showDialogToImportWallet() {
-    val privateKeyEditText = EditText(this).apply {
-      hint = "Private Key"
-    }
-
-    AlertDialog.Builder(this)
-      .setView(privateKeyEditText)
-      .setNegativeButton("Cancel") { _, _ -> }
-      .setPositiveButton("OK") { _, _ ->
-        val privateKey = privateKeyEditText.text.toString()
-        if (privateKey.isNotEmpty()) {
-          importWallet(privateKey)
-        }
-      }.show()
-  }
-
-  private fun showDialogToMakeTransaction() {
-    val view = LayoutInflater.from(this).inflate(R.layout.dialog_make_transaction, null)
-    with(view) {
-      suggestFromButton.setOnClickListener {
-        suggestWalletAddress(fromEditText)
-      }
-      suggestToButton.setOnClickListener {
-        suggestWalletAddress(toEditText)
-      }
-    }
-
-    AlertDialog.Builder(this)
-      .setView(view)
-      .setNegativeButton("Cancel") { _, _ -> }
-      .setPositiveButton("OK") { _, _ ->
-        val amount = view.ethAmount.text.toString()
-        val from = view.fromEditText.text.toString()
-        val to = view.toEditText.text.toString()
-        if (amount.isNotEmpty() && from.isNotEmpty() && to.isNotEmpty()) {
-          makeTransaction(amount, from, to)
-        }
-      }.show()
-  }
-
-  private fun suggestWalletAddress(textView: TextView) {
-    val addresses = wallets.map { it.address }
-    val currentAddress = textView.text.toString()
-
-    if (addresses.contains(currentAddress)) {
-      val index = addresses.indexOf(currentAddress)
-      textView.text = addresses[(index + 1) % addresses.size]
-    } else if (addresses.isNotEmpty()) {
-      textView.text = addresses[0]
-    }
-  }
-
   private fun <T> execute(
     backgroundJob: () -> T,
     foreGroundJob: ((T) -> Unit)? = null
@@ -227,39 +225,9 @@ class MainActivity : AppCompatActivity() {
       .subscribe({
         foreGroundJob?.invoke(it)
       }, {
-        showMessage("${it::class.java.simpleName}{${it.message}}")
+        showMessage(this, "${it::class.java.simpleName}{${it.message}}")
       }).let {
         disposables.add(it)
       }
-  }
-
-  private fun showMessage(message: String) {
-    toast?.cancel()
-    toast = Toast.makeText(this, message, Toast.LENGTH_LONG)
-    toast?.show()
-  }
-
-  private fun setupBouncyCastle() {
-    val provider = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
-    if (provider == null) {
-      // Web3j will set up the provider lazily when it's first used.
-      return
-    }
-
-    if (provider is BouncyCastleProvider) {
-      // BC with same package name, shouldn't happen in real life.
-      return
-    }
-
-    // Android registers its own BC provider. As it might be outdated and might not include
-    // all needed ciphers, we substitute it with a known BC bundled in the app.
-    // Android's BC has its package rewritten to "com.android.org.bouncycastle" and because
-    // of that it's possible to have another BC implementation loaded in VM.
-    Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
-    Security.insertProviderAt(BouncyCastleProvider(), 1)
-  }
-
-  companion object {
-    const val DEFAULT_PASSWORD = "abc"
   }
 }

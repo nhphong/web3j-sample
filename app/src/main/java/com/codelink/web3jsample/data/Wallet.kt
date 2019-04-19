@@ -1,4 +1,4 @@
-package com.codelink.web3jsample
+package com.codelink.web3jsample.data
 
 data class Wallet(
   val address: String = "",

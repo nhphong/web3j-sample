@@ -6,6 +6,10 @@
     <string name="amount_of_eth">Amount of ETH</string>
     <string name="from_address">From address</string>
     <string name="to_address">To address</string>
-    <string name="delete_all_wallets">Delete all wallets</string>
-    <string name="be_patient">The transaction will take some time to complete, be patient…</string>
+    <string name="clear_wallets">Clear wallets</string>
+    <string name="clear_contracts">Clear contracts</string>
+    <string name="making_transaction">The transaction will take some time to complete, be patient…</string>
+    <string name="deploying_contracts">Deploying the contract, be patient…</string>
+    <string name="deploy_contract">Deploy Contract</string>
+    <string name="wallet_address">Wallet Address</string>
 </resources>
