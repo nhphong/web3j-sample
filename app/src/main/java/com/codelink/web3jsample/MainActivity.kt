@@ -15,10 +15,10 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.dialog_make_transaction.view.*
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.web3j.crypto.ECKeyPair
 import org.web3j.crypto.WalletUtils
 import org.web3j.protocol.Web3j
-import org.web3j.protocol.Web3jFactory
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.http.HttpService
 import org.web3j.tx.Transfer
@@ -26,6 +26,7 @@ import org.web3j.utils.Convert
 import java.io.File
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.security.Security
 
 
 class MainActivity : AppCompatActivity() {
@@ -40,13 +41,14 @@ class MainActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    setupBouncyCastle()
     setContentView(R.layout.activity_main)
     walletFile = File("${filesDir.absolutePath}/wallets")
     if (!walletFile.exists() || !walletFile.isDirectory) {
       walletFile.mkdirs()
     }
 
-    web3j = Web3jFactory.build(
+    web3j = Web3j.build(
       HttpService(
         "https://rinkeby.infura.io/v3/ccbfbd9d1b1c4a31845332512941919c"
       )
@@ -235,6 +237,26 @@ class MainActivity : AppCompatActivity() {
     toast?.cancel()
     toast = Toast.makeText(this, message, Toast.LENGTH_LONG)
     toast?.show()
+  }
+
+  private fun setupBouncyCastle() {
+    val provider = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
+    if (provider == null) {
+      // Web3j will set up the provider lazily when it's first used.
+      return
+    }
+
+    if (provider is BouncyCastleProvider) {
+      // BC with same package name, shouldn't happen in real life.
+      return
+    }
+
+    // Android registers its own BC provider. As it might be outdated and might not include
+    // all needed ciphers, we substitute it with a known BC bundled in the app.
+    // Android's BC has its package rewritten to "com.android.org.bouncycastle" and because
+    // of that it's possible to have another BC implementation loaded in VM.
+    Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+    Security.insertProviderAt(BouncyCastleProvider(), 1)
   }
 
   companion object {
